@@ -26,7 +26,16 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
+    const classCollection = client.db("rhythmaxDB").collection("classes");
     
+
+    // class
+    app.post('/class' , async(req, res) => {
+        const classes = req.body;
+        console.log('Class', classes);
+        const result = await classCollection.insertOne(classes);
+        res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection
