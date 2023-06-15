@@ -55,7 +55,11 @@ async function run() {
     });
 
     app.get("/classes", async (req, res) => {
-      const result = await classCollection.find().toArray();
+      let query = {};
+      if (req.query?.email) {
+        query = { instructorEmail: req.query?.email };
+      }
+      const result = await classCollection.find(query).toArray();
       res.send(result);
     });
 
