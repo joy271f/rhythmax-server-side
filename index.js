@@ -45,8 +45,9 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     const classCollection = client.db("rhythmaxDB").collection("classes");
     const userCollection = client.db("rhythmaxDB").collection("users");
+    const bookingCollection = client.db("rhythmaxDB").collection("bookings");
 
-    // user 
+    // user
     app.get("/users", verifyJWT, async (req, res) => {
       let query = {};
       const result = await userCollection.find(query).toArray();
@@ -120,7 +121,6 @@ async function run() {
       res.send(result);
     });
 
-
     // update makeinstructor
     app.put("/makeinstructor/:id", async (req, res) => {
       const id = req.params.id;
@@ -129,7 +129,7 @@ async function run() {
       const updateInstructor = req.body;
       const instructor = {
         $set: {
-          role: updateInstructor.role
+          role: updateInstructor.role,
         },
       };
       const result = await userCollection.updateOne(
@@ -137,6 +137,21 @@ async function run() {
         instructor,
         options
       );
+      res.send(result);
+    });
+
+
+    // bookings
+    app.get('/bookings', async (req, res) => {
+      const result = await bookingCollection.find().toArray();
+      res.send(result);
+    })
+
+    /* bookings api for select btn */
+    app.post("/bookings", async (req, res) => {
+      const bookings = req.body;
+      console.log(bookings);
+      const result = await bookingCollection.insertOne(bookings);
       res.send(result);
     });
 
@@ -155,6 +170,15 @@ async function run() {
       const result = await userCollection.deleteOne(query);
       res.send(result);
     });
+
+
+    /* bookings delete api */
+    app.delete('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
