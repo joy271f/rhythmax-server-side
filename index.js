@@ -91,6 +91,36 @@ async function run() {
       res.send({});
     });
 
+    // update
+    app.put("/classes/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateClass = req.body;
+      const classUpdate = {
+        $set: {
+          className: updateClass.className,
+          photo: updateClass.photo,
+          seats: updateClass.seats,
+          price: updateClass.price,
+        },
+      };
+      const result = await classCollection.updateOne(
+        filter,
+        classUpdate,
+        options
+      );
+      res.send(result);
+    });
+
+    // delete
+    app.delete("/classes/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await classCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
