@@ -98,7 +98,7 @@ async function run() {
       res.send({});
     });
 
-    // update
+    // update classes
     app.put("/classes/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -115,6 +115,26 @@ async function run() {
       const result = await classCollection.updateOne(
         filter,
         classUpdate,
+        options
+      );
+      res.send(result);
+    });
+
+
+    // update makeinstructor
+    app.put("/makeinstructor/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateInstructor = req.body;
+      const instructor = {
+        $set: {
+          role: updateInstructor.role
+        },
+      };
+      const result = await userCollection.updateOne(
+        filter,
+        instructor,
         options
       );
       res.send(result);
