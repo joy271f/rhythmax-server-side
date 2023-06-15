@@ -46,6 +46,13 @@ async function run() {
     const classCollection = client.db("rhythmaxDB").collection("classes");
     const userCollection = client.db("rhythmaxDB").collection("users");
 
+    // user 
+    app.get("/users", verifyJWT, async (req, res) => {
+      let query = {};
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // class
     app.get("/classes/:id", async (req, res) => {
       const id = req.params.id;
@@ -113,11 +120,19 @@ async function run() {
       res.send(result);
     });
 
-    // delete
+    // delete for class
     app.delete("/classes/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await classCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // delete for user
+    app.delete("/users/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
       res.send(result);
     });
 
