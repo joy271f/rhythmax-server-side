@@ -46,7 +46,6 @@ async function run() {
     const classCollection = client.db("rhythmaxDB").collection("classes");
     const userCollection = client.db("rhythmaxDB").collection("users");
     const bookingCollection = client.db("rhythmaxDB").collection("bookings");
-	const paymentsCollection = client.db('rhythmaxDB').collection('payments');
 	
 	
 	app.post('/create-payment-intent', async (req, res) => {
@@ -83,9 +82,19 @@ async function run() {
 	})
 
     // user
-    app.get("/users", verifyJWT, async (req, res) => {
+    app.get("/users", async (req, res) => {
       let query = {};
-      const result = await userCollection.find(query).toArray();
+      const limit = parseInt(req.query?.limit);
+      if (req.query?.getInstructor) {
+        query = {
+          role: 'instructor'
+        }
+      }
+      const cursor = userCollection.find(query);
+      if (limit > 0) {
+        cursor.limit(limit);
+      }
+      const result = await cursor.toArray();
       res.send(result);
     });
 
@@ -95,7 +104,7 @@ async function run() {
       let query, isBooked = false;
       if (req.query?.email) {
         query = {
-          userEmail: req.query.email
+          userEmail: req.query.email, classID: id
         }
         const bookings = await bookingCollection.findOne(query)
         if (bookings?._id) {
@@ -112,10 +121,18 @@ async function run() {
 	
     app.get("/classes", async (req, res) => {
       let query = {};
+      const limit = parseInt(req.query?.limit);
       if (req.query?.email) {
         query = { instructorEmail: req.query?.email };
       }
-      const result = await classCollection.find(query).toArray();
+      const cursor = classCollection.find(query);
+      if (req.query?.sort) {
+		cursor.sort({ enrolled: -1 }, function (err, cursor) { })
+	  }
+      if (limit > 0) {
+        cursor.limit(limit);
+      }
+      const result = await cursor.toArray();
       res.send(result);
     });
 
@@ -191,13 +208,18 @@ async function run() {
 
     // bookings
     app.get('/bookings', async (req, res) => {
-      let query = {}, result = {}
-      if (req.query?.email) {
+      let query = {},queryEmail={}, result = {}
+	  if (req.query?.getPaid) {
         query = {
+          paid: 'Paid'
+        }
+      }
+      if (req.query?.email) {
+         queryEmail = {
           userEmail: req.query.email,
         }
-        result = await bookingCollection.find(query).toArray();
       }
+      result = await bookingCollection.find({...query, ...queryEmail}).toArray();
       res.send(result);
     })
 	
@@ -210,12 +232,17 @@ async function run() {
 
 
     /* bookings api for select btn */
-    app.post("/bookings", async (req, res) => {
+    app.post('/bookings', async (req, res) => {
       const bookings = req.body;
-      console.log(bookings);
-      const result = await bookingCollection.insertOne(bookings);
+      const filter = { _id: new ObjectId(bookings.classID) };
+
+      const result = await bookingCollection.insertOne(bookings)
+
+      if (result.insertedId) {
+        let status = await classCollection.updateOne(filter, { $inc: { enrolled: 1 } });
+      }
       res.send(result);
-    });
+    })
 
     // delete for class
     app.delete("/classes/:id", verifyJWT, async (req, res) => {
