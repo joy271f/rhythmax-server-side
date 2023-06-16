@@ -46,6 +46,41 @@ async function run() {
     const classCollection = client.db("rhythmaxDB").collection("classes");
     const userCollection = client.db("rhythmaxDB").collection("users");
     const bookingCollection = client.db("rhythmaxDB").collection("bookings");
+	const paymentsCollection = client.db('rhythmaxDB').collection('payments');
+	
+	
+	app.post('/create-payment-intent', async (req, res) => {
+		const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+		const o = req.body;
+		const price = o.price;
+		const amount = price * 100;
+
+		const paymentIntent = await stripe.paymentIntents.create({
+			currency: 'usd',
+			amount: amount,
+			"payment_method_types": [
+				"card"
+			]
+		});
+		res.send({
+			clientSecret: paymentIntent.client_secret,
+		});
+	});
+	
+	app.post('/payments', async (req, res) => {
+		const payment = req.body;
+		const id = payment.orderId
+		const filter = { _id: new ObjectId(id) }
+		const updatedDoc = {
+			$set: {
+				paid: 'Paid',
+				transactionId: payment.transactionId
+			}
+		}
+		const updatedResult = await bookingCollection.updateOne(filter, updatedDoc)
+
+		res.send(updatedResult);
+	})
 
     // user
     app.get("/users", verifyJWT, async (req, res) => {
@@ -55,13 +90,26 @@ async function run() {
     });
 
     // class
-    app.get("/classes/:id", async (req, res) => {
+    app.get('/classes/:id', async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await classCollection.findOne(query);
-      res.send(result);
-    });
-
+      let query, isBooked = false;
+      if (req.query?.email) {
+        query = {
+          userEmail: req.query.email
+        }
+        const bookings = await bookingCollection.findOne(query)
+        if (bookings?._id) {
+          isBooked = true
+        }
+      }
+      query = { _id: new ObjectId(id) }
+      let result = await classCollection.findOne(query)
+      if (result?._id) {
+        result.isBooked = isBooked
+      }
+      res.send(result)
+    })
+	
     app.get("/classes", async (req, res) => {
       let query = {};
       if (req.query?.email) {
@@ -143,9 +191,23 @@ async function run() {
 
     // bookings
     app.get('/bookings', async (req, res) => {
-      const result = await bookingCollection.find().toArray();
+      let query = {}, result = {}
+      if (req.query?.email) {
+        query = {
+          userEmail: req.query.email,
+        }
+        result = await bookingCollection.find(query).toArray();
+      }
       res.send(result);
     })
+	
+    app.get('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.findOne(query);
+      res.send(result)
+    })
+
 
     /* bookings api for select btn */
     app.post("/bookings", async (req, res) => {
